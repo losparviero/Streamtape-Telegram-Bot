@@ -183,8 +183,8 @@ bot.on("message::url", async (ctx) => {
 
       // Serve
 
-      app.get("/", (req, res) => {
-        res.sendFile(path.join(__dirname, filename));
+      app.get("/file", (req, res) => {
+        res.sendFile(path.join(__dirname, `/${filename}`));
       });
 
       await ctx.replyWithHTML(
