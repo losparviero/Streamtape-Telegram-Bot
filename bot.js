@@ -184,11 +184,11 @@ bot.on("message::url", async (ctx) => {
       // Serve
 
       app.get("/file", (req, res) => {
-        res.sendFile(path.join(__dirname, `/${filename}`));
+        res.sendFile(__dirname, `/${filename}`);
       });
 
       await ctx.replyWithHTML(
-        `<b>As file size is over 50MB, please download file from <a href = "https://st.up.railway.app:${process.env.PORT}/${filename}">here</a></b>`
+        `<b>As file size is over 50MB, please download file from <a href = "https://st.up.railway.app:${process.env.PORT}/${filename}">here</a>.</b>`
       );
     })
     .catch(async (error) => {
