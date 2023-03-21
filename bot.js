@@ -38,10 +38,6 @@ app.listen(3000, () => {
   console.log("Server listening on port 3000");
 });
 
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "video.mp4"));
-});
-
 // Concurrency
 
 function getSessionKey(ctx) {
@@ -116,9 +112,7 @@ async function log(ctx, next) {
 
 bot.command("start", async (ctx) => {
   await ctx
-    .reply(
-      "*Welcome!* ✨  Send a Streamtape link.\n_Note that videos less than 50MB are supported due to Telegram restrictions._"
-    )
+    .reply("*Welcome!* ✨\n_Send a Streamtape link._")
     .then(() => console.log("New user added:", ctx.from));
 });
 
@@ -148,7 +142,10 @@ bot.on("message::url", async (ctx) => {
 
   // Download
 
-  const filename = "video.mp4";
+  let match = url.match(/(https?:\/\/[^\s]+)/g);
+  let link = match[0];
+  let fileId = link.split("/v/")[1];
+  let filename = `${fileId}.mp4`;
 
   await axios({
     url: downloadUrl.url,
@@ -167,7 +164,7 @@ bot.on("message::url", async (ctx) => {
     .then(async () => {
       let size;
 
-      await fs.stat("./video.mp4", async function (err, stats) {
+      await fs.stat(filename, async function (err, stats) {
         if (err) {
           console.error(err);
           return;
@@ -176,18 +173,22 @@ bot.on("message::url", async (ctx) => {
         size = fileSizeInBytes / (1024 * 1024);
       });
 
-      if (size > 50) {
-        await ctx.replyWithVideo(new InputFile("./video.mp4"), {
+      if (size < 50) {
+        await ctx.replyWithVideo(new InputFile(filename), {
           reply_to_message_id: ctx.message.message_id,
         });
-        await fs.unlinkSync("./video.mp4");
+        await fs.unlinkSync(filename);
         return;
       }
 
       // Serve
 
+      app.get("/", (req, res) => {
+        res.sendFile(path.join(__dirname, filename));
+      });
+
       await ctx.replyWithHTML(
-        `<b>As file size is over 50MB, please download file from <a href = "https://st.up.railway.app:3000/video.mp4">here</a></b>`
+        `<b>As file size is over 50MB, please download file from <a href = "https://st.up.railway.app:3000/${filename}">here</a></b>`
       );
     })
     .catch(async (error) => {
