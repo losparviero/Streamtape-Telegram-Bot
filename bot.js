@@ -16,6 +16,9 @@ const { Bot, session, InputFile, GrammyError, HttpError } = require("grammy");
 const { hydrateReply, parseMode } = require("@grammyjs/parse-mode");
 const { run, sequentialize } = require("@grammyjs/runner");
 const { hydrate } = require("@grammyjs/hydrate");
+const express = require("express");
+const path = require("path");
+const app = express();
 const st = require("streamtape");
 const axios = require("axios");
 const fs = require("fs");
@@ -28,6 +31,16 @@ const bot = new Bot(process.env.BOT_TOKEN);
 
 const user = process.env.API_USER;
 const pass = process.env.API_PASS;
+
+// Server
+
+app.listen(3000, () => {
+  console.log("Server listening on port 3000");
+});
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "video.mp4"));
+});
 
 // Concurrency
 
@@ -152,9 +165,30 @@ bot.on("message::url", async (ctx) => {
       });
     })
     .then(async () => {
-      await ctx.replyWithVideo(new InputFile("./video.mp4"), {
-        reply_to_message_id: ctx.message.message_id,
+      let size;
+
+      await fs.stat("./video.mp4", async function (err, stats) {
+        if (err) {
+          console.error(err);
+          return;
+        }
+        const fileSizeInBytes = stats.size;
+        size = fileSizeInBytes / (1024 * 1024);
       });
+
+      if (size > 50) {
+        await ctx.replyWithVideo(new InputFile("./video.mp4"), {
+          reply_to_message_id: ctx.message.message_id,
+        });
+        await fs.unlinkSync("./video.mp4");
+        return;
+      }
+
+      // Serve
+
+      await ctx.replyWithHTML(
+        `<b>As file size is over 50MB, please download file from <a href = "https://st.up.railway.app:3000/video.mp4">here</a></b>`
+      );
     })
     .catch(async (error) => {
       console.log(`Failed to download file: ${error}`);
@@ -163,7 +197,6 @@ bot.on("message::url", async (ctx) => {
       });
     });
 
-  await fs.unlinkSync("./video.mp4");
   await statusMessage.delete();
 });
 
