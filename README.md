@@ -15,6 +15,8 @@ Download videos from Streamtape in Telegram!
 
 #### It's advisable to run the bot using PM2 or any startup manager for persistent execution.
 
+###### **Note:** This bot is limited to videos of 50MB size or lower. This is a restriction of the Telegram Bot API and can be bypassed using a client API. However I have not included that code yet. Alternatively, you can create a server and host it there.
+
 <br>
 
 ### Uninstall
