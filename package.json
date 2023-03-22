@@ -1,6 +1,6 @@
 {
   "name": "streamtape-telegram",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Download videos from Streamtape in Telegram!",
   "main": "bot.js",
   "scripts": {
