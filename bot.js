@@ -16,11 +16,9 @@ const { Bot, session, InputFile, GrammyError, HttpError } = require("grammy");
 const { hydrateReply, parseMode } = require("@grammyjs/parse-mode");
 const { run, sequentialize } = require("@grammyjs/runner");
 const { hydrate } = require("@grammyjs/hydrate");
-const express = require("express");
-const path = require("path");
-const app = express();
+const { TelegramClient } = require("telegram");
+const { StringSession } = require("telegram/sessions");
 const st = require("streamtape");
-const axios = require("axios");
 const fs = require("fs");
 
 // Bot
@@ -32,10 +30,12 @@ const bot = new Bot(process.env.BOT_TOKEN);
 const user = process.env.API_USER;
 const pass = process.env.API_PASS;
 
-// Server
+const apiId = 0 | process.env.API_ID;
+const apiHash = process.env.API_HASH;
 
-app.listen(`${process.env.PORT}`, () => {
-  console.log(`Server listening on port ${process.env.PORT}`);
+const stringSession = new StringSession(process.env.SESSION);
+const client = new TelegramClient(stringSession, apiId, apiHash, {
+  connectionRetries: 5,
 });
 
 // Concurrency
@@ -181,15 +181,35 @@ bot.on("message::url", async (ctx) => {
         return;
       }
 
-      // Serve
+      // Client
 
-      app.get("/file", (req, res) => {
-        res.sendFile(__dirname, `/${filename}`);
-      });
+      async function login() {
+        await client.connect();
+        if (!(await client.isUserAuthorized())) {
+          console.log("You are not authorized.");
+        }
+      }
 
-      await ctx.replyWithHTML(
-        `<b>As file size is over 50MB, please download file from <a href = "https://st.up.railway.app:${process.env.PORT}/${filename}">here</a>.</b>`
-      );
+      async function sendVideo(chat, file, caption) {
+        await client.sendFile(chat, {
+          file: file,
+          caption: caption,
+          progressCallback: console.log,
+        });
+      }
+
+      async function clientSend() {
+        await login();
+
+        const chat = process.env.LOG_CHANNEL;
+        const file = `./${filename}`;
+        const caption = ctx.message.text;
+
+        await sendVideo(chat, file, caption);
+        console.log("Video sent successfully!");
+      }
+
+      await clientSend();
     })
     .catch(async (error) => {
       console.log(`Failed to download file: ${error}`);
