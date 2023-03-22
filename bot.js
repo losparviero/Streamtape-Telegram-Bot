@@ -178,7 +178,6 @@ bot.on("message::url", async (ctx) => {
         await ctx.replyWithVideo(new InputFile(filename), {
           reply_to_message_id: ctx.message.message_id,
         });
-        await fs.unlinkSync(filename);
         return;
       }
 
@@ -212,13 +211,13 @@ bot.on("message::url", async (ctx) => {
 
       await clientSend();
     })
+    .then(await fs.unlinkSync(filename))
     .catch(async (error) => {
       console.log(`Failed to download file: ${error}`);
       await ctx.reply("*Failed to download file.*", {
         reply_to_message_id: ctx.message.message_id,
       });
     });
-
   await statusMessage.delete();
 });
 
