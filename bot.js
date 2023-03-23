@@ -20,7 +20,6 @@ const { TelegramClient } = require("telegram");
 const { StringSession } = require("telegram/sessions");
 const Downloader = require("nodejs-file-downloader");
 const st = require("streamtape");
-const axios = require("axios");
 const util = require("util");
 const fs = require("fs");
 
