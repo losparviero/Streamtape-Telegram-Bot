@@ -22,9 +22,11 @@
     "fs": "^0.0.1-security",
     "grammy": "^1.15.3",
     "http": "^0.0.1-security",
+    "nodejs-file-downloader": "^4.10.6",
     "path": "^0.12.7",
     "streamtape": "^1.0.2",
-    "telegram": "^2.15.10"
+    "telegram": "^2.15.10",
+    "util": "^0.12.5"
   },
   "devDependencies": {}
 }

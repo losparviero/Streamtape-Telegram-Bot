@@ -18,8 +18,10 @@ const { run, sequentialize } = require("@grammyjs/runner");
 const { hydrate } = require("@grammyjs/hydrate");
 const { TelegramClient } = require("telegram");
 const { StringSession } = require("telegram/sessions");
-const axios = require("axios");
+const Downloader = require("nodejs-file-downloader");
 const st = require("streamtape");
+const axios = require("axios");
+const util = require("util");
 const fs = require("fs");
 
 // Bot
@@ -113,7 +115,9 @@ async function log(ctx, next) {
 
 bot.command("start", async (ctx) => {
   await ctx
-    .reply("*Welcome!* ✨\n_Send a Streamtape link._")
+    .reply(
+      "*Welcome!* ✨\n_Send a Streamtape link.\nOnly videos less than 50MB are supported._"
+    )
     .then(() => console.log("New user added:", ctx.from));
 });
 
@@ -148,79 +152,66 @@ bot.on("message::url", async (ctx) => {
   let fileId = link.split("/v/")[1];
   let filename = `${fileId}.mp4`;
 
-  await axios({
+  const downloader = new Downloader({
     url: downloadUrl.url,
-    method: "GET",
-    responseType: "stream",
-  })
-    .then(async (response) => {
-      const file = fs.createWriteStream(filename);
-      response.data.pipe(file);
+    directory: "./",
+    onBeforeSave: (deducedName) => {
+      console.log(`The file name is: ${deducedName}`);
+    },
+    fileName: `${fileId}.mp4`,
+  });
 
-      return new Promise((resolve, reject) => {
-        file.on("finish", resolve);
-        file.on("error", reject);
-      });
-    })
-    .then(async () => {
-      let size;
+  const { filePath } = await downloader.download();
+  console.log(filePath);
+  console.log("Video downloaded");
 
-      await fs.stat(filename, async function (err, stats) {
-        if (err) {
-          console.error(err);
-          return;
-        }
-        const fileSizeInBytes = stats.size;
-        size = fileSizeInBytes / (1024 * 1024);
-      });
+  const stat = util.promisify(fs.stat);
+  const unlink = util.promisify(fs.unlink);
 
-      if (size < 50) {
-        await ctx.replyWithVideo(new InputFile(filename), {
-          reply_to_message_id: ctx.message.message_id,
-        });
-        await fs.unlinkSync(filename);
-        return;
-      }
+  const stats = await stat(filename);
+  const fileSizeInBytes = stats.size;
+  const size = fileSizeInBytes / (1024 * 1024);
 
-      // Client
-
-      async function login() {
-        await client.connect();
-        if (!(await client.isUserAuthorized())) {
-          console.log("You are not authorized.");
-        }
-      }
-
-      async function sendVideo(chat, file, caption) {
-        await client.sendFile(chat, {
-          file: file,
-          caption: caption,
-          progressCallback: console.log,
-        });
-      }
-
-      async function clientSend() {
-        await login();
-
-        const chat = process.env.LOG_CHANNEL;
-        const file = `./${filename}`;
-        const caption = ctx.message.text;
-
-        await sendVideo(chat, file, caption);
-        console.log("Video sent successfully!");
-      }
-
-      await clientSend();
-      await fs.unlinkSync(filename);
-    })
-
-    .catch(async (error) => {
-      console.log(`Failed to download file: ${error}`);
-      await ctx.reply("*Failed to download file.*", {
-        reply_to_message_id: ctx.message.message_id,
-      });
+  if (size < 50) {
+    await ctx.replyWithVideo(new InputFile(filename), {
+      reply_to_message_id: ctx.message.message_id,
+      supports_streaming: true,
     });
+  } else {
+    await ctx.reply("*Video is over 50MB.*");
 
+    // Client
+
+    async function login() {
+      await client.connect();
+      if (!(await client.isUserAuthorized())) {
+        console.log("You are not authorized.");
+      }
+    }
+
+    async function sendVideo(chat, file, caption) {
+      await client.sendFile(chat, {
+        file: file,
+        caption: caption,
+        progressCallback: console.log,
+      });
+    }
+
+    async function clientSend() {
+      await login();
+
+      const chat = process.env.LOG_CHANNEL;
+      const file = `./${filename}`;
+      const caption = ctx.message.text;
+
+      await sendVideo(chat, file, caption);
+      console.log("Video sent successfully!");
+    }
+
+    await clientSend();
+  }
+
+  await unlink(filePath);
   await statusMessage.delete();
 });
 
